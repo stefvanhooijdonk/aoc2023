@@ -15,60 +15,74 @@ namespace aoc2023
             var lines = System.IO.File.ReadAllLines(System.IO.Path.Combine(inputFolder,"input.txt"));
             Console.WriteLine("Read input.txt with: {0} lines.\r\n",lines.LongLength);
 
-            var list = new List<CalibrationLine>();
-            foreach(var l in lines){
-                list.Add(new CalibrationLine(l));
+            var games = new List<Game>();
+            foreach(var g in lines){
+                games.Add(Game.FromInput(g));
             }
-
-            var result = list.Sum(l => l.GetCalibrationValue());
-            Console.WriteLine("Total of all Calibration values ( {0} ) \r\n", result);
-
-            var realresult = list.Sum(l => l.GetRealCalibrationValue());
-            Console.WriteLine("Total of all Real Calibration values ( {0} )\r\n", realresult);
+            
+            var validGames = games.Where(
+                game => game.IsValidGameGiven(12, 13, 14));
+            
+            Console.WriteLine("Total of IDs of possible games ( {0} ) \r\n", validGames.Sum(g => g.GameID));
+            Console.WriteLine("Total of Powers of games ( {0} ) \r\n", games.Sum(g => g.Power()));
         }
 
-        internal static List<string> numbers = ["zero","one","two","three","four","five","six","seven","eight","nine"];
-    }
+        internal class Game{
 
-    public class CalibrationLine{
-        private string _line;
-        public CalibrationLine(string line){
-            _line = line;
-        }
+            internal int GameID = -1;
+            internal List<Draw> Draws = new List<Draw>();
+            
+            internal static Game FromInput(string input){
+                var splits = input.Split(":");
+                var game = new Game();
+                game.GameID = int.Parse(splits[0].Split(" ")[1]);
 
-        public int GetCalibrationValue(){
-            var firstDigit = _line.ToCharArray().First(c => char.IsDigit(c));
-            var lastDigit = _line.ToCharArray().Last(c => char.IsDigit(c));
-
-            return int.Parse(string.Format("{0}{1}", firstDigit,lastDigit));        
-        }
-
-        public int GetRealCalibrationValue(){
-            var firstDigit = _line.ToCharArray().First(c => char.IsDigit(c)).ToString();
-            var firstDigitIndex = _line.IndexOf(firstDigit);
-
-            for(var n=0; n<10; n++) {
-                var number = Program.numbers[n];
-                var numberFirstIndex = _line.IndexOf(number);
-                if(numberFirstIndex>=0 && numberFirstIndex<firstDigitIndex){
-                    firstDigitIndex = numberFirstIndex;
-                    firstDigit = n.ToString();
+                var draws = splits[1].Split(";");
+                foreach(var draw in draws){
+                    game.Draws.Add(Draw.FromInput(draw));
                 }
+                return game;
             }
 
-            var lastDigit = _line.ToCharArray().Last(c => char.IsDigit(c)).ToString();
-            var lastDigitIndex = _line.LastIndexOf(lastDigit);
+            internal bool IsValidGameGiven( int red, int green, int blue){
+                return Draws.All(draw => 
+                    draw.IsValidDrawGiven(red, green, blue));
+            }
 
-            for(var n=0; n<10; n++) {
-                var number = Program.numbers[n];
-                var lastNumberIndex = _line.LastIndexOf(number);
-                if(lastNumberIndex>=0 && lastNumberIndex>lastDigitIndex){
-                    lastDigitIndex = lastNumberIndex;
-                    lastDigit = n.ToString();
+            internal int Power(){
+                var minRed = Draws.Max( d => d.Red );
+                var minGreen = Draws.Max( d => d.Green );
+                var minBlue = Draws.Max( d => d.Blue );
+
+                return minRed * minGreen * minBlue;
+            }
+        }
+
+        internal class Draw{
+            internal int Red = -1;
+            internal int Green = -1;
+            internal int Blue = -1;
+
+            internal static Draw FromInput(string input){
+                var draws = input.Trim().Split(",");
+                var draw = new Draw();
+                foreach(var d in draws){
+                    var splitdraw = d.Trim().ToLowerInvariant().Split(" ");
+                    var amountDrawn = int.Parse(splitdraw[0]);
+                    var color = splitdraw[1].Trim();
+                    if(color == "red") draw.Red = amountDrawn;
+                    if(color == "green") draw.Green = amountDrawn;
+                    if(color == "blue") draw.Blue = amountDrawn;
                 }
+                return draw;
             }
 
-            return int.Parse(string.Format("{0}{1}", firstDigit,lastDigit));        
+            internal bool IsValidDrawGiven(int red, int green, int blue){
+                return 
+                    (Red <= red || Red < 0)&& 
+                    (Green <= green || Green < 0)&& 
+                    (Blue <= blue || Blue < 0);
+            }
         }
     }
 }
