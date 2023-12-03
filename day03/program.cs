@@ -15,74 +15,92 @@ namespace aoc2023
             var lines = System.IO.File.ReadAllLines(System.IO.Path.Combine(inputFolder,"input.txt"));
             Console.WriteLine("Read input.txt with: {0} lines.\r\n",lines.LongLength);
 
-            var games = new List<Game>();
-            foreach(var g in lines){
-                games.Add(Game.FromInput(g));
+            List<Element> elements = new List<Element>();
+            var rowIndex = 0;
+            foreach(var line in lines){
+               
+                var newElement = string.Empty;
+                var columnIndex = 0;
+                var lastColumnIndex = line.Length-1;
+                foreach(var c in line.ToCharArray()){                    
+
+                    if(Char.IsDigit(c)){
+                        newElement = string.Concat(newElement,c);
+                    }
+                    if(Element.IsSymbol(c.ToString()) || c == '.' || columnIndex >= lastColumnIndex){
+                        if(newElement.Length>0) {
+                            var calcStartColumn = columnIndex - (newElement.Length);
+                            // last column is detected in the current iteration
+                            if (columnIndex >= lastColumnIndex) calcStartColumn++;
+
+                            elements.Add(Element.FromInput(newElement, 
+                                rowIndex, 
+                                calcStartColumn));
+                            newElement = string.Empty;
+                        }
+                    }
+                    if(Element.IsSymbol(c.ToString())){
+                        elements.Add(Element.FromInput(c.ToString(),rowIndex,columnIndex));
+                    }
+                    columnIndex++;       
+                }
+                rowIndex++;
             }
-            
-            var validGames = games.Where(
-                game => game.IsValidGameGiven(12, 13, 14));
-            
-            Console.WriteLine("Total of IDs of possible games ( {0} ) \r\n", validGames.Sum(g => g.GameID));
-            Console.WriteLine("Total of Powers of games ( {0} ) \r\n", games.Sum(g => g.Power()));
+
+            var partNumbers = new List<Element>();
+            var parts = elements.Where(e => !e.IsElemntSymbol); 
+            var symbols = elements.Where(e => e.IsElemntSymbol); 
+
+            foreach(var e in elements){
+                Console.WriteLine("p:{0} r:{1} c:{2} l:{3}", e.Part, e.Row, e.Column, e.Part.Length);
+            }
+
+            foreach(var element in parts){
+                var symbolsAdjecent = symbols.Count(
+                    s => (s.Row >= element.Row - 1 && s.Row <= element.Row + 1) &&
+                        (s.Column >= element.Column - 1 && s.Column <= (element.Column + element.Part.Length -1 ) + 1  ) 
+
+                );
+                Console.WriteLine("For p:{0} found {1} symbols adjecent.",element.Part, symbolsAdjecent);
+                if(symbolsAdjecent >= 1){
+                    partNumbers.Add(element);
+                }
+            }
+
+            Console.WriteLine("Count of Elemnts: {0}",elements.Count());
+            Console.WriteLine("Count of partNumbers: {0}",partNumbers.Count());
+            Console.WriteLine("Count of Symbols: {0}",symbols.Count());
+
+            Console.WriteLine("Sum of Partnumbers: {0}",partNumbers.Select(e => e.PartNumber).Distinct().Sum());
+        }
+    }
+
+    internal class Element{
+
+        internal string Part = string.Empty;
+
+        internal int Row = 0;
+        internal int Column = 0;
+
+        internal int PartNumber = -1;
+
+        internal bool IsElemntSymbol = false;
+        internal bool IsPartNumber = false;
+
+        internal static Element FromInput(string input, int row, int column){
+            var issymbol = IsSymbol(input);
+            return new Element(){
+                Row = row,
+                Column = column,    
+                Part = input,
+                IsElemntSymbol = issymbol,
+                IsPartNumber = !issymbol,
+                PartNumber = !issymbol ? int.Parse(input) : -1
+            };
         }
 
-        internal class Game{
-
-            internal int GameID = -1;
-            internal List<Draw> Draws = new List<Draw>();
-            
-            internal static Game FromInput(string input){
-                var splits = input.Split(":");
-                var game = new Game();
-                game.GameID = int.Parse(splits[0].Split(" ")[1]);
-
-                var draws = splits[1].Split(";");
-                foreach(var draw in draws){
-                    game.Draws.Add(Draw.FromInput(draw));
-                }
-                return game;
-            }
-
-            internal bool IsValidGameGiven( int red, int green, int blue){
-                return Draws.All(draw => 
-                    draw.IsValidDrawGiven(red, green, blue));
-            }
-
-            internal int Power(){
-                var minRed = Draws.Max( d => d.Red );
-                var minGreen = Draws.Max( d => d.Green );
-                var minBlue = Draws.Max( d => d.Blue );
-
-                return minRed * minGreen * minBlue;
-            }
-        }
-
-        internal class Draw{
-            internal int Red = -1;
-            internal int Green = -1;
-            internal int Blue = -1;
-
-            internal static Draw FromInput(string input){
-                var draws = input.Trim().Split(",");
-                var draw = new Draw();
-                foreach(var d in draws){
-                    var splitdraw = d.Trim().ToLowerInvariant().Split(" ");
-                    var amountDrawn = int.Parse(splitdraw[0]);
-                    var color = splitdraw[1].Trim();
-                    if(color == "red") draw.Red = amountDrawn;
-                    if(color == "green") draw.Green = amountDrawn;
-                    if(color == "blue") draw.Blue = amountDrawn;
-                }
-                return draw;
-            }
-
-            internal bool IsValidDrawGiven(int red, int green, int blue){
-                return 
-                    (Red <= red || Red < 0)&& 
-                    (Green <= green || Green < 0)&& 
-                    (Blue <= blue || Blue < 0);
-            }
+        internal static bool IsSymbol(string input){
+            return input !=null && input.Length == 1 && !Char.IsDigit(input,0) && input != ".";
         }
     }
 }
